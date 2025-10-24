@@ -14,35 +14,37 @@ const createUser = {
 const getUsers = {
     query: Joi.object().keys({
         name: Joi.string(),
-        role: Joi.string(),
+        role: Joi.string().valid(...Object.values(Role)),
         sortBy: Joi.string(),
-        limit: Joi.number().integer(),
-        page: Joi.number().integer()
+        sortType: Joi.string().valid('asc', 'desc'),
+        limit: Joi.number().integer().min(1),
+        page: Joi.number().integer().min(1)
     })
 };
 
 const getUser = {
     params: Joi.object().keys({
-        userId: Joi.number().integer()
+        userId: Joi.string().required()
     })
 };
 
 const updateUser = {
     params: Joi.object().keys({
-        userId: Joi.number().integer()
+        userId: Joi.string().required()
     }),
     body: Joi.object()
         .keys({
             email: Joi.string().email(),
             password: Joi.string().custom(password),
-            name: Joi.string()
+            name: Joi.string(),
+            role: Joi.string().valid(...Object.values(Role))
         })
         .min(1)
 };
 
 const deleteUser = {
     params: Joi.object().keys({
-        userId: Joi.number().integer()
+        userId: Joi.string().required()
     })
 };
 

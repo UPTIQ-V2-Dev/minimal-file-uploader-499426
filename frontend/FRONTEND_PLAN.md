@@ -17,9 +17,31 @@ Extremely minimal React 19 + Vite + ShadCN + Tailwind v4 application for uploadi
 
 ## Page Structure
 
-### 1. Main Upload Page (`/`)
+### 1. Login Page (`/login`)
 
-**File**: `src/pages/UploadPage.tsx`
+**File**: `src/pages/LoginPage.tsx`
+
+**Components Required**:
+
+- `LoginForm` - Core login form with email/password fields
+- Form validation using React Hook Form + Zod
+- Loading states and error handling
+
+**Features**:
+
+- Email and password input fields
+- Client-side form validation
+- Authentication via existing auth service
+- Redirect to main page after successful login
+- Error handling for authentication failures
+
+**API Endpoints**:
+
+- `POST /auth/login` - User authentication
+
+### 2. Main Upload Page (`/`)
+
+**File**: `src/pages/UploadPage.tsx` (Protected Route)
 
 **Components Required**:
 
@@ -29,10 +51,12 @@ Extremely minimal React 19 + Vite + ShadCN + Tailwind v4 application for uploadi
 
 **Features**:
 
+- Requires authentication to access
 - File selection (image/PDF only, <5MB)
 - File validation (type, size)
 - Upload to cloud storage via signed URL
 - Basic error handling
+- Logout functionality
 
 **API Endpoints**:
 
@@ -44,23 +68,30 @@ Extremely minimal React 19 + Vite + ShadCN + Tailwind v4 application for uploadi
 
 ### Core Components
 
-1. **FileUpload** (`src/components/FileUpload.tsx`)
+1. **LoginForm** (`src/components/LoginForm.tsx`)
+    - Email and password input fields
+    - Form validation and submission
+    - Loading and error states
+
+2. **FileUpload** (`src/components/FileUpload.tsx`)
     - File input with drag & drop
     - File validation logic
     - Upload state management
 
-2. **FilePreview** (`src/components/FilePreview.tsx`)
+3. **FilePreview** (`src/components/FilePreview.tsx`)
     - Display selected file info
     - Remove file option
 
-3. **UploadProgress** (`src/components/UploadProgress.tsx`)
+4. **UploadProgress** (`src/components/UploadProgress.tsx`)
     - Progress bar component
     - Upload status messages
 
 ### UI Components (ShadCN)
 
-- `Button` - Upload actions
-- `Card` - File preview container
+- `Button` - Form submissions and upload actions
+- `Card` - Login form and file preview container
+- `Input` - Email and password fields
+- `Form` - Form validation wrapper
 - `Progress` - Upload progress
 - `Alert` - Error messages
 
@@ -137,18 +168,23 @@ test('app renders without crashing', () => {
 ```
 src/
 ├── pages/
-│   └── UploadPage.tsx
+│   ├── LoginPage.tsx
+│   └── UploadPage.tsx (protected)
 ├── components/
+│   ├── LoginForm.tsx
 │   ├── FileUpload.tsx
 │   ├── FilePreview.tsx
 │   └── UploadProgress.tsx
 ├── services/
+│   ├── auth.ts (existing)
 │   └── uploadService.ts
 ├── utils/
 │   └── fileValidation.ts
 ├── types/
+│   ├── user.ts (existing)
 │   └── upload.ts
 ├── hooks/
+│   ├── useAuth.ts (authentication hook)
 │   └── useFileUpload.ts (optional state management)
 └── test/
     └── minimal.test.tsx
@@ -156,13 +192,17 @@ src/
 
 ## Implementation Priority
 
-1. File validation utilities
-2. Upload service with signed URL handling
-3. Core FileUpload component
-4. FilePreview component
-5. Main UploadPage with state management
-6. Error handling and loading states
-7. Single passing test case
+1. Authentication hook (useAuth)
+2. Login form component with validation
+3. Login page implementation
+4. Update App.tsx with routing (Login/Upload pages)
+5. File validation utilities
+6. Upload service with signed URL handling
+7. Core FileUpload component
+8. FilePreview component
+9. Main UploadPage with state management (protected)
+10. Error handling and loading states
+11. Single passing test case
 
 ## Key Constraints
 

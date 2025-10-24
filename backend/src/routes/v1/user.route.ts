@@ -61,12 +61,12 @@ export default router;
  *                 description: At least one number and one letter
  *               role:
  *                  type: string
- *                  enum: [user, admin]
+ *                  enum: [USER, ADMIN]
  *             example:
- *               name: fake name
- *               email: fake@example.com
- *               password: password1
- *               role: user
+ *               name: John Doe
+ *               email: john@example.com
+ *               password: password123
+ *               role: USER
  *     responses:
  *       "201":
  *         description: Created
@@ -97,12 +97,19 @@ export default router;
  *         name: role
  *         schema:
  *           type: string
- *         description: User role
+ *           enum: [USER, ADMIN]
+ *         description: Filter users by role
  *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
- *         description: sort by query in the form of field:desc/asc (ex. name:asc)
+ *         description: Field to sort by (id, name, email, role, createdAt, updatedAt)
+ *       - in: query
+ *         name: sortType
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort direction
  *       - in: query
  *         name: limit
  *         schema:
@@ -208,10 +215,14 @@ export default router;
  *                 format: password
  *                 minLength: 8
  *                 description: At least one number and one letter
+ *               role:
+ *                 type: string
+ *                 enum: [USER, ADMIN]
+ *                 description: User role (admin only)
  *             example:
- *               name: fake name
- *               email: fake@example.com
- *               password: password1
+ *               name: Updated Name
+ *               email: updated@example.com
+ *               password: newpassword123
  *     responses:
  *       "200":
  *         description: OK

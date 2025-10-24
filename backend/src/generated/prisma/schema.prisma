@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int            @id @default(autoincrement())
+  email           String         @unique
+  name            String?
+  password        String
+  role            Role           @default(USER)
+  isEmailVerified Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  Token           Token[]
+  FileUpload      FileUpload[]
+  MCPResource     MCPResource[]
+  MCPOperation    MCPOperation[]
+}
+
+model Token {
+  id          Int       @id @default(autoincrement())
+  token       String
+  type        TokenType
+  expires     DateTime
+  blacklisted Boolean
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+}
+
+model FileUpload {
+  id          Int              @id @default(autoincrement())
+  uploadId    String           @unique
+  fileName    String
+  fileType    String
+  fileSize    Int
+  status      FileUploadStatus @default(INITIATED)
+  signedUrl   String
+  fileUrl     String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  completedAt DateTime?
+  user        User             @relation(fields: [userId], references: [id])
+  userId      Int
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TokenType {
+  ACCESS
+  REFRESH
+  RESET_PASSWORD
+  VERIFY_EMAIL
+}
+
+enum FileUploadStatus {
+  INITIATED
+  COMPLETED
+  FAILED
+}
+
+model MCPResource {
+  id          String            @id @default(cuid())
+  type        MCPResourceType
+  name        String
+  description String?
+  data        Json?
+  status      MCPResourceStatus @default(ACTIVE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id])
+  userId      Int
+  operations  MCPOperation[]
+
+  @@index([userId, type])
+  @@index([status])
+}
+
+model MCPOperation {
+  id          String             @id @default(cuid())
+  operation   String
+  data        Json?
+  result      Json?
+  status      MCPOperationStatus @default(PENDING)
+  error       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  completedAt DateTime?
+  user        User               @relation(fields: [userId], references: [id])
+  userId      Int
+  resource    MCPResource?       @relation(fields: [resourceId], references: [id])
+  resourceId  String?
+
+  @@index([userId, status])
+  @@index([operation])
+}
+
+enum MCPResourceType {
+  PROCESS
+  DATA
+  TOOL
+  CONTEXT
+}
+
+enum MCPResourceStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+enum MCPOperationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}

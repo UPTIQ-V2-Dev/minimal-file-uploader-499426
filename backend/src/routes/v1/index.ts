@@ -2,6 +2,8 @@ import config from '../../config/config.ts';
 import authRoute from './auth.route.ts';
 import docsRoute from './docs.route.ts';
 import mcpRoute from './mcp.route.ts';
+import mcpRestRoute from './mcpRest.route.ts';
+import uploadRoute from './upload.route.ts';
 import userRoute from './user.route.ts';
 import express from 'express';
 
@@ -18,7 +20,15 @@ const defaultRoutes = [
     },
     {
         path: '/mcp',
+        route: mcpRestRoute
+    },
+    {
+        path: '/mcp-protocol',
         route: mcpRoute
+    },
+    {
+        path: '/api/upload',
+        route: uploadRoute
     }
 ];
 
