@@ -49,13 +49,13 @@ export default router;
  *                 description: Name of the file to upload
  *               fileType:
  *                 type: string
- *                 enum: [image/jpeg, image/png, image/gif, image/webp, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/plain, text/csv]
+ *                 enum: [image/jpeg, image/png, image/gif, image/webp, application/pdf]
  *                 description: MIME type of the file
  *               fileSize:
  *                 type: integer
  *                 minimum: 1
- *                 maximum: 10485760
- *                 description: Size of the file in bytes (max 10MB)
+ *                 maximum: 5242880
+ *                 description: Size of the file in bytes (max 5MB)
  *             example:
  *               fileName: document.pdf
  *               fileType: application/pdf
@@ -174,33 +174,17 @@ export default router;
  *           enum: [INITIATED, COMPLETED, FAILED]
  *         description: Filter by upload status
  *       - in: query
- *         name: fileName
- *         schema:
- *           type: string
- *         description: Filter by file name (partial match)
- *       - in: query
- *         name: fileType
- *         schema:
- *           type: string
- *         description: Filter by file MIME type
- *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [createdAt, updatedAt, fileName, fileSize, status]
+ *           enum: [createdAt, fileName]
  *         description: Field to sort by
- *       - in: query
- *         name: sortType
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
- *           maximum: 100
+ *           maximum: 50
  *         default: 10
  *         description: Maximum number of results
  *       - in: query

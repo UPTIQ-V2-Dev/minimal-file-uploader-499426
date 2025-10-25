@@ -24,8 +24,8 @@ const getUpload = catchAsyncWithAuth(async (req, res) => {
     res.status(httpStatus.OK).send(upload);
 });
 const getUploads = catchAsyncWithAuth(async (req, res) => {
-    const filter = pick(req.validatedQuery, ['status', 'fileName', 'fileType']);
-    const options = pick(req.validatedQuery, ['sortBy', 'sortType', 'limit', 'page']);
+    const filter = pick(req.validatedQuery, ['status']);
+    const options = pick(req.validatedQuery, ['sortBy', 'limit', 'page']);
     const userId = req.user.id;
     const result = await fileUploadService.queryUploads(filter, options, userId);
     res.status(httpStatus.OK).send(result);

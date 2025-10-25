@@ -5,8 +5,8 @@ const initiateUpload = {
         fileName: Joi.string().required().min(1).max(255),
         fileType: Joi.string()
             .required()
-            .valid('image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain', 'text/csv'),
-        fileSize: Joi.number().integer().min(1).max(10485760) // 10MB max
+            .valid('image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'),
+        fileSize: Joi.number().integer().min(1).max(5242880) // 5MB max
     })
 };
 const completeUpload = {
@@ -22,11 +22,8 @@ const getUpload = {
 const queryUploads = {
     query: Joi.object().keys({
         status: Joi.string().valid(...Object.values(FileUploadStatus)),
-        fileName: Joi.string(),
-        fileType: Joi.string(),
-        sortBy: Joi.string().valid('createdAt', 'updatedAt', 'fileName', 'fileSize', 'status'),
-        sortType: Joi.string().valid('asc', 'desc'),
-        limit: Joi.number().integer().min(1).max(100),
+        sortBy: Joi.string().valid('createdAt', 'fileName'),
+        limit: Joi.number().integer().min(1).max(50),
         page: Joi.number().integer().min(1)
     })
 };

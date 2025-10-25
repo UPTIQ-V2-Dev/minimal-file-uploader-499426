@@ -6,15 +6,18 @@
 
 ```prisma
 model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
+  id              Int            @id @default(autoincrement())
+  email           String         @unique
   name            String?
   password        String
-  role            String   @default("USER")
-  isEmailVerified Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  role            String         @default("USER")
+  isEmailVerified Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   Token           Token[]
+  FileUpload      FileUpload[]
+  MCPResource     MCPResource[]
+  MCPOperation    MCPOperation[]
 }
 
 model Token {
@@ -26,6 +29,58 @@ model Token {
   createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [id])
   userId      Int
+}
+
+model FileUpload {
+  id          Int      @id @default(autoincrement())
+  uploadId    String   @unique
+  fileName    String
+  fileType    String
+  fileSize    Int
+  status      String   @default("INITIATED")
+  signedUrl   String
+  fileUrl     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+}
+
+model MCPResource {
+  id          String         @id @default(cuid())
+  type        String
+  name        String
+  description String?
+  data        Json?
+  status      String         @default("ACTIVE")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id])
+  userId      Int
+  operations  MCPOperation[]
+
+  @@index([userId, type])
+  @@index([status])
+}
+
+model MCPOperation {
+  id          String       @id @default(cuid())
+  operation   String
+  data        Json?
+  result      Json?
+  status      String       @default("PENDING")
+  error       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  completedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id])
+  userId      Int
+  resource    MCPResource? @relation(fields: [resourceId], references: [id])
+  resourceId  String?
+
+  @@index([userId, status])
+  @@index([operation])
 }
 ```
 
@@ -185,6 +240,36 @@ ERR: {"400":"Invalid upload ID", "401":"Unauthorized", "404":"Upload not found",
 EX_REQ: curl -X POST /api/upload/complete -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." -H "Content-Type: application/json" -d '{"uploadId":"upload-123-abc"}'
 EX_RES_200: {"uploadId":"upload-123-abc","fileUrl":"https://storage.com/files/document.pdf"}
 
+---
+
+EP: GET /api/upload
+DESC: Get paginated list of user's file uploads.
+IN: headers:{Authorization:str!} query:{status:str, limit:int, page:int, sortBy:str}
+OUT: 200:{results:arr[obj], page:int, limit:int, totalPages:int, totalResults:int}
+ERR: {"401":"Unauthorized", "400":"Invalid query parameters", "500":"Internal server error"}
+EX_REQ: curl -X GET "/api/upload?page=1&limit=10&status=COMPLETED" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"results":[{"id":1,"uploadId":"upload-123-abc","fileName":"document.pdf","fileType":"application/pdf","fileSize":1048576,"status":"COMPLETED","fileUrl":"https://storage.com/files/document.pdf","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:05:00Z","completedAt":"2025-10-24T10:05:00Z"}],"page":1,"limit":10,"totalPages":1,"totalResults":1}
+
+---
+
+EP: GET /api/upload/:uploadId
+DESC: Get specific file upload by upload ID.
+IN: headers:{Authorization:str!} params:{uploadId:str!}
+OUT: 200:{id:int, uploadId:str, fileName:str, fileType:str, fileSize:int, status:str, fileUrl:str, signedUrl:str, createdAt:str, updatedAt:str, completedAt:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Upload not found", "500":"Internal server error"}
+EX_REQ: curl -X GET /api/upload/upload-123-abc -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"id":1,"uploadId":"upload-123-abc","fileName":"document.pdf","fileType":"application/pdf","fileSize":1048576,"status":"COMPLETED","fileUrl":"https://storage.com/files/document.pdf","signedUrl":"https://storage.com/upload-url","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:05:00Z","completedAt":"2025-10-24T10:05:00Z"}
+
+---
+
+EP: DELETE /api/upload/:uploadId
+DESC: Delete file upload record and associated file.
+IN: headers:{Authorization:str!} params:{uploadId:str!}
+OUT: 200:{deleted:bool, uploadId:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Upload not found", "500":"Internal server error"}
+EX_REQ: curl -X DELETE /api/upload/upload-123-abc -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"deleted":true,"uploadId":"upload-123-abc"}
+
 ## MCP (Model Context Protocol) Endpoints
 
 ---
@@ -216,3 +301,97 @@ OUT: 200:{deleted:bool, resourceId:str}
 ERR: {"400":"Invalid resource ID or type", "401":"Unauthorized", "403":"Insufficient permissions", "404":"Resource not found", "500":"Internal server error"}
 EX_REQ: curl -X DELETE /mcp -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." -H "Content-Type: application/json" -d '{"resourceId":"mcp-1","type":"process"}'
 EX_RES_200: {"deleted":true,"resourceId":"mcp-1"}
+
+## MCP Resource Management Endpoints
+
+---
+
+EP: POST /mcp/resources
+DESC: Create a new MCP resource.
+IN: headers:{Authorization:str!} body:{type:str!, name:str!, description:str, data:obj}
+OUT: 201:{id:str, type:str, name:str, description:str, data:obj, status:str, createdAt:str, updatedAt:str}
+ERR: {"400":"Invalid resource data", "401":"Unauthorized", "500":"Internal server error"}
+EX_REQ: curl -X POST /mcp/resources -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." -H "Content-Type: application/json" -d '{"type":"PROCESS","name":"DataProcessor","description":"Processes data files","data":{"config":"value"}}'
+EX_RES_201: {"id":"clp1234567890","type":"PROCESS","name":"DataProcessor","description":"Processes data files","data":{"config":"value"},"status":"ACTIVE","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:00:00Z"}
+
+---
+
+EP: GET /mcp/resources
+DESC: Get paginated list of user's MCP resources.
+IN: headers:{Authorization:str!} query:{type:str, status:str, limit:int, page:int, sortBy:str}
+OUT: 200:{results:arr[obj], page:int, limit:int, totalPages:int, totalResults:int}
+ERR: {"401":"Unauthorized", "400":"Invalid query parameters", "500":"Internal server error"}
+EX_REQ: curl -X GET "/mcp/resources?page=1&limit=10&type=PROCESS" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"results":[{"id":"clp1234567890","type":"PROCESS","name":"DataProcessor","description":"Processes data files","data":{"config":"value"},"status":"ACTIVE","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:00:00Z"}],"page":1,"limit":10,"totalPages":1,"totalResults":1}
+
+---
+
+EP: GET /mcp/resources/:resourceId
+DESC: Get specific MCP resource by ID.
+IN: headers:{Authorization:str!} params:{resourceId:str!}
+OUT: 200:{id:str, type:str, name:str, description:str, data:obj, status:str, createdAt:str, updatedAt:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Resource not found", "500":"Internal server error"}
+EX_REQ: curl -X GET /mcp/resources/clp1234567890 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"id":"clp1234567890","type":"PROCESS","name":"DataProcessor","description":"Processes data files","data":{"config":"value"},"status":"ACTIVE","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:00:00Z"}
+
+---
+
+EP: PATCH /mcp/resources/:resourceId
+DESC: Update MCP resource.
+IN: headers:{Authorization:str!} params:{resourceId:str!} body:{name:str, description:str, data:obj, status:str}
+OUT: 200:{id:str, type:str, name:str, description:str, data:obj, status:str, createdAt:str, updatedAt:str}
+ERR: {"400":"Invalid resource data", "401":"Unauthorized", "403":"Insufficient permissions", "404":"Resource not found", "500":"Internal server error"}
+EX_REQ: curl -X PATCH /mcp/resources/clp1234567890 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." -H "Content-Type: application/json" -d '{"name":"UpdatedProcessor","status":"INACTIVE"}'
+EX_RES_200: {"id":"clp1234567890","type":"PROCESS","name":"UpdatedProcessor","description":"Processes data files","data":{"config":"value"},"status":"INACTIVE","createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:05:00Z"}
+
+---
+
+EP: DELETE /mcp/resources/:resourceId
+DESC: Delete MCP resource.
+IN: headers:{Authorization:str!} params:{resourceId:str!}
+OUT: 200:{deleted:bool, resourceId:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Resource not found", "500":"Internal server error"}
+EX_REQ: curl -X DELETE /mcp/resources/clp1234567890 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"deleted":true,"resourceId":"clp1234567890"}
+
+## MCP Operation Management Endpoints
+
+---
+
+EP: POST /mcp/operations
+DESC: Create and execute a new MCP operation.
+IN: headers:{Authorization:str!} body:{operation:str!, data:obj, resourceId:str}
+OUT: 201:{id:str, operation:str, data:obj, status:str, createdAt:str, resourceId:str}
+ERR: {"400":"Invalid operation data", "401":"Unauthorized", "404":"Resource not found", "500":"Internal server error"}
+EX_REQ: curl -X POST /mcp/operations -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." -H "Content-Type: application/json" -d '{"operation":"processData","data":{"input":"sample"},"resourceId":"clp1234567890"}'
+EX_RES_201: {"id":"clq0987654321","operation":"processData","data":{"input":"sample"},"status":"PENDING","createdAt":"2025-10-24T10:00:00Z","resourceId":"clp1234567890"}
+
+---
+
+EP: GET /mcp/operations
+DESC: Get paginated list of user's MCP operations.
+IN: headers:{Authorization:str!} query:{operation:str, status:str, resourceId:str, limit:int, page:int, sortBy:str}
+OUT: 200:{results:arr[obj], page:int, limit:int, totalPages:int, totalResults:int}
+ERR: {"401":"Unauthorized", "400":"Invalid query parameters", "500":"Internal server error"}
+EX_REQ: curl -X GET "/mcp/operations?page=1&limit=10&status=COMPLETED" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"results":[{"id":"clq0987654321","operation":"processData","data":{"input":"sample"},"result":{"output":"processed"},"status":"COMPLETED","error":null,"createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:05:00Z","completedAt":"2025-10-24T10:05:00Z","resourceId":"clp1234567890"}],"page":1,"limit":10,"totalPages":1,"totalResults":1}
+
+---
+
+EP: GET /mcp/operations/:operationId
+DESC: Get specific MCP operation by ID.
+IN: headers:{Authorization:str!} params:{operationId:str!}
+OUT: 200:{id:str, operation:str, data:obj, result:obj, status:str, error:str, createdAt:str, updatedAt:str, completedAt:str, resourceId:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Operation not found", "500":"Internal server error"}
+EX_REQ: curl -X GET /mcp/operations/clq0987654321 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"id":"clq0987654321","operation":"processData","data":{"input":"sample"},"result":{"output":"processed"},"status":"COMPLETED","error":null,"createdAt":"2025-10-24T10:00:00Z","updatedAt":"2025-10-24T10:05:00Z","completedAt":"2025-10-24T10:05:00Z","resourceId":"clp1234567890"}
+
+---
+
+EP: DELETE /mcp/operations/:operationId
+DESC: Cancel or delete MCP operation.
+IN: headers:{Authorization:str!} params:{operationId:str!}
+OUT: 200:{deleted:bool, operationId:str}
+ERR: {"401":"Unauthorized", "403":"Insufficient permissions", "404":"Operation not found", "409":"Operation cannot be cancelled", "500":"Internal server error"}
+EX_REQ: curl -X DELETE /mcp/operations/clq0987654321 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+EX_RES_200: {"deleted":true,"operationId":"clq0987654321"}

@@ -13,22 +13,10 @@ const s3Client = new S3Client({
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
     }
 });
-// File type validation
-const ALLOWED_FILE_TYPES = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain',
-    'text/csv'
-];
+// File type validation - only images and PDFs
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 // File size limits (in bytes)
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'uploads-bucket';
 /**
  * Validate file parameters
@@ -181,7 +169,6 @@ const queryUploads = async (filter, options, userId) => {
     const page = options.page ?? 1;
     const limit = options.limit ?? 10;
     const sortBy = options.sortBy ?? 'createdAt';
-    const sortType = options.sortType ?? 'desc';
     const skip = (page - 1) * limit;
     // Add user filter to ensure users only see their own uploads
     const whereClause = { ...filter, userId };
@@ -190,7 +177,7 @@ const queryUploads = async (filter, options, userId) => {
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { [sortBy]: sortType }
+            orderBy: { [sortBy]: 'desc' }
         }),
         prisma.fileUpload.count({ where: whereClause })
     ]);
